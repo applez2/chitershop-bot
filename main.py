@@ -31,7 +31,7 @@ class BuyState(StatesGroup):
     choosing_amount = State()
 
 PRICES = {
-    "bomj": {"usdt": 0.5, "ton": 0.00077258},
+    "bomj": {"usdt": 0.5, "ton": 0.00977258},
     "random": {"usdt": 1.0, "ton": 0.32017184},
     "fat": {"usdt": 2.5, "ton": 0.79812681}
 }
