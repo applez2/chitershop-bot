@@ -20,7 +20,7 @@ import os
 API_TOKEN = os.getenv("BOT_TOKEN")
 CRYPTOBOT_TOKEN = os.getenv("CRYPTOBOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
-WEBHOOK_URL = "https://chitershop.suetologg1337.repl.co/webhook"
+WEBHOOK_URL = "https://chitershop.onrender.com/webhook"
 
 bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher(storage=MemoryStorage())
