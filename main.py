@@ -110,7 +110,7 @@ async def process_amount(message: types.Message, state: FSMContext):
             "amount": total_ton,
             "description": f"Покупка: {item_names[item]} x{amount}",
             "hidden_message": "Куки будут отправлены после успешной оплаты.",
-            "payload": str(payload),
+            "payload": payload,
             "paid_btn_name": "viewItem",
             "paid_btn_url": "https://t.me/chitershop_bot"
         }
@@ -134,16 +134,15 @@ async def process_amount(message: types.Message, state: FSMContext):
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json
-    print("[WEBHOOK DATA]:", data)
     if not data:
         return "no data", 400
 
     if data.get("update_type") == "invoice_paid":
         payload = data.get("payload")
-        if isinstance(payload, dict):
-            payload = next(iter(payload.values()))
+        print("[PAYMENT CONFIRMED]", payload)
 
-        print("[PAYMENT CONFIRMED]:", payload)
+        if isinstance(payload, dict):
+            payload = payload.get("payload")
 
         if payload in user_data:
             item = user_data[payload]["item"]
@@ -161,7 +160,7 @@ def webhook():
                         os.remove(file_name)
                     del user_data[payload]
                 except Exception as e:
-                    print("[ERROR SENDING COOKIE]:", e)
+                    print("[ERROR SENDING FILE]", e)
 
             asyncio.run_coroutine_threadsafe(send(), asyncio.get_event_loop())
 
@@ -194,7 +193,7 @@ async def main():
     dp.include_router(router)
     asyncio.create_task(update_stock())
     await set_webhook()
-    await dp.start_polling(bot)
+    # await dp.start_polling(bot)  <-- ЗАКОМЕНТОВАНО для webhook режима
 
 if __name__ == '__main__':
     threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8000)).start()
