@@ -16,7 +16,6 @@ import threading
 import time
 import os
 
-# 🔐 Отримуємо конфіденційні дані з Environment Variables
 API_TOKEN = os.getenv("BOT_TOKEN")
 CRYPTOBOT_TOKEN = os.getenv("CRYPTOBOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
@@ -111,7 +110,7 @@ async def process_amount(message: types.Message, state: FSMContext):
             "amount": total_ton,
             "description": f"Покупка: {item_names[item]} x{amount}",
             "hidden_message": "Куки будут отправлены после успешной оплаты.",
-            "payload": payload,
+            "payload": str(payload),
             "paid_btn_name": "viewItem",
             "paid_btn_url": "https://t.me/chitershop_bot"
         }
@@ -141,6 +140,9 @@ def webhook():
 
     if data.get("update_type") == "invoice_paid":
         payload = data.get("payload")
+        if isinstance(payload, dict):
+            payload = next(iter(payload.values()))
+
         print("[PAYMENT CONFIRMED]:", payload)
 
         if payload in user_data:
