@@ -7,7 +7,7 @@ import threading
 from flask import Flask, request
 from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
@@ -25,13 +25,13 @@ bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTM
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 app = Flask(__name__)
-crypto = AioCryptoPay(token=CRYPTOBOT_TOKEN, network=Networks.MAINNET)
+crypto = AioCryptoPay(token=CRYPTOBOT_TOKEN, network=Networks.MAIN_NET)
 
 class BuyState(StatesGroup):
     choosing_amount = State()
 
 PRICES = {
-    "bomj": {"usdt": 0.5, "ton": 0.00977258},
+    "bomj": {"usdt": 0.5, "ton": 0.15977258},
     "random": {"usdt": 1.0, "ton": 0.32017184},
     "fat": {"usdt": 2.5, "ton": 0.79812681}
 }
@@ -142,14 +142,14 @@ def webhook():
                 try:
                     for i in range(amount):
                         cookie = generate_cookie()
-                        file_name = f"cookie_{user_id}_{int(time.time())}_{i}.txt"
-                        with open(file_name, "w") as f:
-                            f.write(cookie)
-                        await bot.send_document(chat_id=user_id, document=FSInputFile(file_name))
-                        os.remove(file_name)
+                        await bot.send_message(
+                            chat_id=user_id,
+                            text=f"🍪 <b>Ваш cookie #{i+1}:</b>\n<code>{cookie}</code>",
+                            parse_mode=ParseMode.HTML
+                        )
                     del user_data[payload]
                 except Exception as e:
-                    print("[ERROR SENDING FILE]", e)
+                    print("[ERROR SENDING COOKIE]", e)
 
             asyncio.run_coroutine_threadsafe(send(), asyncio.get_event_loop())
 
@@ -174,7 +174,7 @@ async def main():
     dp.include_router(router)
     asyncio.create_task(update_stock())
     await set_webhook()
-    # await dp.start_polling(bot) <-- выключено для webhook
+    # await dp.start_polling(bot)
 
 if __name__ == '__main__':
     threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8000)).start()
