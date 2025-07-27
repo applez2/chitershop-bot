@@ -1,3 +1,4 @@
 aiogram==3.13.1
 aiohttp
 flask
+aiocryptopay==0.4.0
