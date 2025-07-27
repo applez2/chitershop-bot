@@ -1,20 +1,20 @@
 import asyncio
 import random
 import string
-import aiohttp
+import os
+import time
+import threading
 from flask import Flask, request
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile
 from aiogram.enums import ParseMode
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram import Router
-from aiogram.filters import CommandStart, Command
-from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-import threading
-import time
-import os
+from aiogram.filters import CommandStart, Command
+from aiogram.client.default import DefaultBotProperties
+from aiogram import Router
+from aiocryptopay import AioCryptoPay, Networks
 
 API_TOKEN = os.getenv("BOT_TOKEN")
 CRYPTOBOT_TOKEN = os.getenv("CRYPTOBOT_TOKEN")
@@ -25,6 +25,7 @@ bot = Bot(token=API_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTM
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 app = Flask(__name__)
+crypto = AioCryptoPay(token=CRYPTOBOT_TOKEN, network=Networks.MAINNET)
 
 class BuyState(StatesGroup):
     choosing_amount = State()
@@ -100,35 +101,26 @@ async def process_amount(message: types.Message, state: FSMContext):
         "user_id": message.from_user.id
     }
 
-    async with aiohttp.ClientSession() as session:
-        headers = {
-            "Content-Type": "application/json",
-            "Crypto-Pay-API-Token": CRYPTOBOT_TOKEN
-        }
-        invoice_data = {
-            "asset": "TON",
-            "amount": total_ton,
-            "description": f"Покупка: {item_names[item]} x{amount}",
-            "hidden_message": "Куки будут отправлены после успешной оплаты.",
-            "payload": payload,
-            "paid_btn_name": "viewItem",
-            "paid_btn_url": "https://t.me/chitershop_bot"
-        }
-        async with session.post("https://pay.crypt.bot/api/createInvoice", json=invoice_data, headers=headers) as resp:
-            resp_data = await resp.json()
-            if resp_data.get("ok"):
-                pay_url = resp_data["result"]["pay_url"]
-                await message.answer(
-                    f"Вы выбрали: <b>{item_names[item]}</b>\n"
-                    f"Количество: <b>{amount}</b>\n"
-                    f"💰 Сумма к оплате: <b>{total_ton} TON</b>\n\n"
-                    f"Нажмите кнопку ниже для перехода к оплате:",
-                    reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                        [InlineKeyboardButton(text="💳 Оплатить через CryptoBot", url=pay_url)]
-                    ])
-                )
-            else:
-                await message.answer("Ошибка при создании счёта. Попробуйте позже.")
+    invoice = await crypto.create_invoice(
+        asset="TON",
+        amount=total_ton,
+        description=f"Покупка: {item_names[item]} x{amount}",
+        hidden_message="Куки будут отправлены после успешной оплаты.",
+        payload=payload,
+        paid_btn_name="viewItem",
+        paid_btn_url="https://t.me/chitershop_bot"
+    )
+
+    await message.answer(
+        f"Вы выбрали: <b>{item_names[item]}</b>\n"
+        f"Количество: <b>{amount}</b>\n"
+        f"💰 Сумма к оплате: <b>{total_ton} TON</b>\n\n"
+        f"Нажмите кнопку ниже для перехода к оплате:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💳 Оплатить через CryptoBot", url=invoice.pay_url)]
+        ])
+    )
+
     await state.clear()
 
 @app.route("/webhook", methods=["POST"])
@@ -140,9 +132,6 @@ def webhook():
     if data.get("update_type") == "invoice_paid":
         payload = data.get("payload")
         print("[PAYMENT CONFIRMED]", payload)
-
-        if isinstance(payload, dict):
-            payload = payload.get("payload")
 
         if payload in user_data:
             item = user_data[payload]["item"]
@@ -179,21 +168,13 @@ async def admin_panel(message: types.Message):
         await message.answer("У вас нет доступа к админ панели.")
 
 async def set_webhook():
-    async with aiohttp.ClientSession() as session:
-        await session.post(
-            "https://pay.crypt.bot/api/setWebhook",
-            headers={
-                "Content-Type": "application/json",
-                "Crypto-Pay-API-Token": CRYPTOBOT_TOKEN
-            },
-            json={"url": WEBHOOK_URL}
-        )
+    await crypto.set_webhook(WEBHOOK_URL)
 
 async def main():
     dp.include_router(router)
     asyncio.create_task(update_stock())
     await set_webhook()
-    # await dp.start_polling(bot)  <-- ЗАКОМЕНТОВАНО для webhook режима
+    # await dp.start_polling(bot) <-- выключено для webhook
 
 if __name__ == '__main__':
     threading.Thread(target=lambda: app.run(host="0.0.0.0", port=8000)).start()
