@@ -1,2 +1,4 @@
-aiogram==3.6.0
-aiohttp==3.9.3
+aiogram==3.13.1
+aiohttp
+flask
+aiocryptopay==0.3.0
